@@ -1,3 +1,3 @@
-#**Primer Proyecto POO**<br>
+# Primer Proyecto POO<br>
 ## **Calculadora con PyQt5**
 
