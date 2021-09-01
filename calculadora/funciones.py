@@ -78,38 +78,6 @@ def raiz(indice, radicando):
         print("cannot divide by zero")
 
 
-'''
-class Humano:
-    # self refiere a la clase que contiene la variable u objeto
-    def __init__(self, nombre='', edad=0, fecha_nac=''):
-        self.nombre = nombre
-        self.edad = edad
-        self.fecha_nac = fecha_nac
-        self._dni = ''  # un guion bajo precediendo la variable transforma en variable de ambito privado de la clase
-
-    def setDni(self, dni):
-        self._dni = dni
-
-    def getDni(self):
-        return self._dni
-
-
-class Empleado(Humano):  # la clase Empleado HEREDA LOS ATRIBUTOS DE LA CLASE HUMANO
-
-    def __init__(self, cuil='', legajo='', fecha_ingreso='', puesto=''):
-        self.cuil = cuil
-        self.legajo = legajo
-        self._fecha_ingreso = fecha_ingreso
-        self.puesto = puesto
-
-    def set_fecha_ingreso(self, date):
-        self._fecha_ingreso = date
-
-    def get_fecha_ingreso(self):
-        return self._fecha_ingreso
-'''
-
-
 class CalculadoraGO(QWidget):  # QWidget es la clase padre y accedo a sus atributos con "self."
     def __init__(self):
         super().__init__()
@@ -192,6 +160,8 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
             for col in row:  # col es cada elemento de la lista en row
                 # creo un objeto con el objeto pasado como parametro en _boton y lo alojo dentro de la grilla
                 w = Boton()
+                if col is type(int):
+                    w.set_numero(True)
                 w.setObjectName(str(col))
                 w.setText(w.objectName())
                 # distribuyo los objetos dentro del layout
@@ -210,10 +180,9 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
         self._buffer = []
 
     def fn_encola_operacion(self, sender):
-        print(sender.objectName())
-        #print(objeto.text())
-        #self._buffer_op.append(t)
-        #print(self._buffer_op)
+        if sender.get_numero():
+            print(sender.objectName())
+
 
     def suma(self, a, b):
         self.resultado_previo = a + b
