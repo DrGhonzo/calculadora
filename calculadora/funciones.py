@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import *
 
 #importo libreria de systema
 import sys
+import math
 
 
 def mi_funcion():  # "def" es una palabra reservada del interprete para definir funciones y metodos
@@ -27,8 +28,8 @@ def mi_funcion():  # "def" es una palabra reservada del interprete para definir 
 
 
 def suma(a, b):
-    c = a + b
-    print(c, a, b)
+    return a + b
+    # print(c, a, b)
 
 
 def resta(a, b):
@@ -88,10 +89,10 @@ class CalculadoraGO(QWidget):  # QWidget es la clase padre y accedo a sus atribu
         self.layout_horizontal = QHBoxLayout()
 
         self.display = QDoubleSpinBox()  # primero se crea la instancia del objeto
-        self.display.setDecimals(0)  # se le van modificando atributos
+
         self.display.setAlignment(Qt.AlignRight)  # se alinean los numeros a la derecha
         self.display.setButtonSymbols(QAbstractSpinBox.NoButtons)  # quitamos la vista de los botones de edicion
-        self.display.setReadOnly(False)
+        self.display.setReadOnly(True)
         self.display.setMaximum(1000)
 
         self.layout_vertical.addWidget(self.display)
@@ -103,14 +104,42 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
     # TODO:
     #   a + b - c = total  objeto valor y objeto funcion, cola de operaciones, ecolamos valor u/o operacion
     #   generar buffer de operaciones y buffer de funciones
-    #   crear memoria de calculo
     #   crear boton "clear" y "clear all" que limpie el buffer de operaciones y funciones y el historial
+    #   optimizar _render_buttons para que ataje cualquier tipo de lista
 
     def __init__(self, name):
         CalculadoraGO.__init__(self)
-        self._numeros = [[7, 8, 9], [4, 5, 6], [1, 2, 3], ["#", 0, ","]]
-        self._funciones = ["", "", "", ""]
+        '''
+        {
+            boton:
+                {
+                 "nombre":'',
+                 "tipo":'',
+                 "valor":'',
+                 "texto":'',
+                 "funcion":'',
+                 "operacion":'',
+                 "icono":''   
+                },
+                {
+                 "nombre":'',
+                 "tipo":'',
+                 "valor":'',
+                 "texto":'',
+                 "funcion":'',
+                 "operacion":'',
+                 "icono":''   
+                }
+        }
+        '''
+
+        self._numeros = [[7, 8, 9], [4, 5, 6], [1, 2, 3], ['png/mathematical-basic-signs-of-plus-and-minus-with-a-slash.png', 0, ","]]
+        self._funciones = ['png/delete.png', 'png/navigation-history-interface-symbol-of-a-clock-with-an-arrow.png']
         self._operaciones = ["+", "-", "x", "/", "="]
+
+        self.display.setMaximum((10 ** 5))
+        self.display.setMinimum((-10 ** 5))
+        self.display.setDecimals(0)
 
         self._buffer = []  #
         self._buffer_op = []  #
@@ -121,7 +150,9 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
 
         self._fn_crea_botones()
 
-        self.grupo_numeros.buttonClicked.connect(self.fn_encola_operacion)
+        self.grupo_numeros.buttonClicked.connect(self.handler_button)
+        self.grupo_operaciones.buttonClicked.connect(self.handler_button)
+        self.grupo_funciones.buttonClicked.connect(self.handler_button)
 
     def _fn_crea_botones(self):
         #  creo una distribucion tipo grilla que permite acomodar los objetos graficos por fila, columna
@@ -131,7 +162,12 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
         self.grupo_numeros = QButtonGroup()
 
         self.grilla_operaciones = QGridLayout()
+
         self.grupo_operaciones = QButtonGroup()
+
+        self.grilla_funciones = QGridLayout()
+
+        self.grupo_funciones = QButtonGroup()
 
         # llamo a un metodo privado _render_buttons que crea y distribuye los botones en funcion de los argumentos pasados
         self._render_buttons(self._numeros, self.grilla_numeros, self.grupo_numeros)
@@ -141,8 +177,12 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
         # llamo a un metodo privado _render_buttons que crea y distribuye los botones en funcion de los argumentos pasados
         self._render_buttons(self._operaciones, self.grilla_operaciones, self.grupo_operaciones)
 
+        self._render_buttons(self._funciones, self.grilla_funciones, self.grupo_funciones)
+
         # agrego al layout vertical la grilla de numeros con el metodo .addLayout(layout)
         self.layout_vertical.addLayout(self.grilla_numeros)
+
+        self.layout_vertical.addLayout(self.grilla_funciones)
 
         self.layout_horizontal.addLayout(self.layout_vertical)
         self.layout_horizontal.addLayout(self.grilla_operaciones)
@@ -160,10 +200,18 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
             for col in row:  # col es cada elemento de la lista en row
                 # creo un objeto con el objeto pasado como parametro en _boton y lo alojo dentro de la grilla
                 w = Boton()
-                if col is type(int):
+                if type(col) is not int:
+                    if type(col) is str and len(col) > 1:  # evaluamos si el str es largo o no (mayor a 1)
+                        # problemas con esta línea que no renderiza el icono en el boton
+                        w.setIcon(QIcon(col))
+                    elif type(col) is str:
+                        w.setObjectName(col)
+                        w.setText(w.objectName())
+                else:
                     w.set_numero(True)
-                w.setObjectName(str(col))
-                w.setText(w.objectName())
+                    w.setObjectName(str(col))
+                    w.setText(w.objectName())
+
                 # distribuyo los objetos dentro del layout
                 # en funcion de su posicion dentro de la lista de listas _lista_botones
                 # para ello utilizo el metodo de listas .index(objeto) que devuelve el indice del elemento
@@ -179,28 +227,61 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
 
         self._buffer = []
 
-    def fn_encola_operacion(self, sender):
-        if sender.get_numero():
-            print(sender.objectName())
+    def handler_button(self, sender):
 
+        if not sender.es_numero():
+            if sender.text() == "=":
+                self._encolador(sender)
+                for op in self._buffer_op:
+                    if op == "+":
+                        # print(self.suma(self.resultado_previo[-1], self.resultado_previo[-2]))
+                        self.display.setValue(float(self.suma(self.resultado_previo[-1], self.resultado_previo[-2])))
+                    if op == "-":
+                        # print(self.suma(self.resultado_previo[-1], self.resultado_previo[-2]))
+                        self.display.setValue(float(self.resta(self.resultado_previo[-1], self.resultado_previo[-2])))
+                    if op == "x":
+                        # print(self.suma(self.resultado_previo[-1], self.resultado_previo[-2]))
+                        self.display.setValue(
+                            float(self.multiplicacion(self.resultado_previo[-1], self.resultado_previo[-2])))
+                    if op == "/":
+                        # print(self.suma(self.resultado_previo[-1], self.resultado_previo[-2]))
+                        self.display.setValue(float(self.division(self.resultado_previo[-2], self.resultado_previo[-1])))
+            elif sender.text() == "C":
+                self._buffer_op.clear()
+                self.display.setValue(0)
+            elif sender.text() == "A":
+                self.display.setValue(self.resultado_previo[-1])
+            else:
+                self._encolador(sender)
+
+        else:
+            self.display.setDecimals(0)
+            self.salida(int(sender.text()))
+            # print(self._resultado)
 
     def suma(self, a, b):
-        self.resultado_previo = a + b
-        return self.resultado_previo
+        self.resultado_previo.append(a + b)
+        return self.resultado_previo[-1]
 
     def resta(self, a, b):
-        self.resultado_previo = a - b
-        return self.resultado_previo
+        r = abs(a - b)
+        if a > b:
+            r *= -1
+        self.resultado_previo.append(r)
+        return self.resultado_previo[-1]
 
     def multiplicacion(self, a, b):
-        self.resultado_previo = a * b
-        return self.resultado_previo
+        self.resultado_previo.append(a * b)
+        return self.resultado_previo[-1]
 
     def division(self, a, b):
 
         if b != 0:  # los comparadores estan en el libro python para principiantes
-            self.resultado_previo = a / b
-            return self.resultado_previo
+            r = a / b
+            d, e = math.modf(r)
+            self.display.setDecimals(len(str(d)))
+            self.resultado_previo.append(r)
+            return self.resultado_previo[-1]
         else:
             print("cannot divide by zero asshole!!")
 
@@ -208,11 +289,18 @@ class Calculadora(CalculadoraGO):  # Calculadora hereda los atributos graficos d
         self._resultado = 0
         self._buffer.append(valor)
         # print(self._buffer)
-        self.display.setMaximum((10 ** len(self._buffer)))
+
         #_rango = len(self._buffer) - 1
         for i, v in enumerate(reversed(self._buffer)):  # i = indice, v=valor en _buffer
             self._resultado += v * (10 ** i)  # elevando 10 a el indice, desplazamos el valor en decenas
         self.display.setValue(self._resultado)
+
+    def _encolador(self, sender):
+        self.resultado_previo.append(self._resultado)  # [1er_resultado]
+        self._buffer_op.append(sender.text())
+        self._resultado = 0.0
+        self._buffer.clear()
+        print(self.resultado_previo, self._buffer_op)
 
 
 class BotonGo(QPushButton):
@@ -227,7 +315,7 @@ class Boton(BotonGo):
 
     emite_valor = pyqtSignal(str)  # definimos una señal custom que emite un string
 
-    def __init__(self):
+    def __init__(self, icon_path=None):
         BotonGo.__init__(self)
         self._numero = False
 
@@ -241,6 +329,10 @@ class Boton(BotonGo):
 
     def es_numero(self):
         return self._numero
+
+    def set_icono(self, icono):
+        icono = QIcon(QPixmap(icono))
+        self.setIcon(icono)
 
     def mousePressEvent(self, e):
 
@@ -261,3 +353,22 @@ if __name__ == '__main__':
     objeto.show()
 
     sys.exit(app.exec_())
+
+
+"""
+    1 - ingreso un numero por la botonera
+    1.1 - encolo lo numeros en un arreglo (array, lista) de elementos que formen un valor con cantidad de digitos mayores o iguales a 1
+    1.2 - muestro el numero formado
+    1.3 - guardo en un arreglo (array, lista) de valores a operar
+     
+    2 - ingreso una funcion por la botonera
+    2.1 - obtener el simbolo de la operacion desde el boton y generar una operacion lista a ser lanzada
+    2.2 - guardo la operacion en un arreglo (array, lista) de operaciones a realizar
+    
+    3 - ingreso el segundo numero por la botonera (repite pasos en 1)
+    
+    4 - obtengo el resultado de la funcion
+    4.1 - realizo recorro el arreglo (array, lista) de operaciones y realizando las operaciones e impactando en el resultado
+
+
+"""
